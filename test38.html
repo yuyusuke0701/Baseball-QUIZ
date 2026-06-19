@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>少年野球ルールクイズ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background-color: #f3f4f6; }
+        .btn-push { transition: all 0.1s; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+        .btn-push:active { transform: translateY(4px); border-bottom-width: 0px; }
+        .hidden { display: none !important; }
+        
+        .rank-card { transition: all 0.5s ease; }
+        .rank-rookie { border-color: #9ca3af; color: #6b7280; }
+        .rank-c { border-color: #10b981; color: #047857; border-width: 3px; }
+        .rank-b { border-color: #3b82f6; color: #1d4ed8; border-width: 4px; }
+        .rank-a { border-color: #ef4444; color: #b91c1c; border-width: 5px; box-shadow: 0 0 10px rgba(239,68,68,0.3); }
+        .rank-master { 
+            border-color: #f59e0b; color: #b45309; border-width: 6px; 
+            background: linear-gradient(white, #fffbeb);
+            animation: glow 2s infinite alternate;
+        }
+        @keyframes glow { from { box-shadow: 0 0 10px #f59e0b; } to { box-shadow: 0 0 25px #fbbf24; } }
+        
+        select:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; opacity: 0.7; }
+        .q-image { width: auto; max-height: 200px; object-fit: contain; border-radius: 0.75rem; background: #f9fafb; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <header id="main-header" class="w-full max-w-md text-center py-4">
+        <p class="text-sm font-bold text-blue-700 tracking-widest mb-1 uppercase">Condors Special Edition</p>
+        <h1 class="text-3xl font-black text-blue-900 italic tracking-tighter uppercase">Baseball Quiz</h1>
+        
+        <div class="my-3 flex flex-col items-center gap-3">
+            <select id="user-select" onchange="handleUserSelection(this.value)" class="w-full max-w-[260px] px-3 py-2 border-2 border-blue-200 rounded-xl font-bold text-blue-700 text-sm bg-white shadow-sm outline-none"></select>
+            
+            <div id="rank-display" class="bg-white rounded-2xl px-6 py-2 shadow-lg border-4 rank-card inline-block">
+                <span class="text-[10px] font-bold text-gray-400 block leading-none uppercase">Player Rank</span>
+                <span id="rank-name" class="text-xl font-black italic">---</span>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-container" class="w-full max-w-md">
+        <div id="screen-top" class="space-y-6">
+        
+        <div class="advice-container flex items-center gap-3 px-2">
+            <div class="text-4xl">😎</div> <!-- アイコン -->
+            <div class="bg-blue-50 border-2 border-blue-200 text-blue-800 p-4 rounded-2xl text-sm font-bold leading-relaxed relative speech-bubble">
+                なんどもチャレンジできるよ！
+                ルールマスターめざしてがんばってね！
+            </div>
+        </div>
+        
+            <div class="bg-white rounded-3xl p-6 shadow-xl text-center border-b-8 border-gray-200">
+                <p class="text-lg font-bold text-gray-700 mb-4">どの ルールに ちょうせん する？</p>
+                <div class="grid gap-4">
+                    <button onclick="initQuiz('batting')" class="btn-push w-full py-5 bg-orange-500 border-b-8 border-orange-700 text-white rounded-2xl font-bold text-xl uppercase tracking-widest">
+                         だげき <p class="text-xs mt-1 opacity-90 font-bold">さいこう：<span id="best-batting">0</span>点</p>
+                    </button>
+                    <button onclick="initQuiz('running')" class="btn-push w-full py-5 bg-green-500 border-b-8 border-green-700 text-white rounded-2xl font-bold text-xl uppercase tracking-widest">
+                         そうるい <p class="text-xs mt-1 opacity-90 font-bold">さいこう：<span id="best-running">0</span>点</p>
+                    </button>
+                    <button onclick="initQuiz('fielding')" class="btn-push w-full py-5 bg-blue-500 border-b-8 border-blue-700 text-white rounded-2xl font-bold text-xl uppercase tracking-widest">
+                         しゅび <p class="text-xs mt-1 opacity-90 font-bold">さいこう：<span id="best-fielding">0</span>点</p>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-md border-2 border-gray-100">
+                <h3 class="text-center font-black text-gray-400 text-sm mb-3 italic">RANK TABLE</h3>
+                <div class="grid grid-cols-2 gap-y-2 text-xs font-bold text-gray-600 px-2">
+                    <div class="flex items-center">🌱 ルーキー (0〜)</div>
+                    <div class="flex items-center">🥉 Cクラス (100〜)</div>
+                    <div class="flex items-center">🥈 Bクラス (200〜)</div>
+                    <div class="flex items-center">🥇 Aクラス (270〜)</div>
+                    <div class="flex items-center col-span-2 mt-1">👑 ルールマスター (300)</div>
+                </div>
+            </div>
+            <button onclick="resetScores()" class="w-full text-xs text-gray-400 font-bold underline">いまのユーザーの きろくを けす</button>
+        </div>
+
+        <div id="screen-quiz" class="hidden space-y-4">
+            <div class="flex justify-between px-2 font-bold text-blue-900 text-sm italic">
+                <span id="display-q-num" class="bg-white px-3 py-1 rounded-full shadow-sm">1 / 20</span>
+                <span id="display-score-running" class="bg-blue-100 px-3 py-1 rounded-full shadow-sm text-blue-600">0 点</span>
+            </div>
+            <div class="bg-white rounded-3xl p-6 shadow-xl border-b-8 border-gray-200">
+                <p id="question-text" class="text-xl font-bold text-gray-800 leading-relaxed mb-4 min-h-[60px]"></p>
+                <div id="question-image-container" class="flex justify-center mb-6 hidden"></div>
+                <div id="choices-container" class="grid gap-3"></div>
+            </div>
+            <button onclick="abortQuiz()" class="w-full py-3 text-gray-400 font-bold text-sm">さいてんせずにトップへもどる</button>
+        </div>
+
+        <div id="screen-feedback" class="hidden space-y-4">
+            <div id="feedback-card" class="rounded-3xl p-8 shadow-2xl text-center border-b-8">
+                <div id="result-icon" class="text-6xl mb-4"></div>
+                <h2 id="result-text" class="text-3xl font-black mb-4"></h2>
+                
+                <div id="feedback-image-container" class="flex justify-center mb-4 hidden"></div>
+
+                <div class="bg-white bg-opacity-60 rounded-xl p-5 text-left mb-6 border-2 border-white">
+                    <p id="explanation-text" class="text-lg font-bold text-gray-800 leading-snug"></p>
+                </div>
+                <button onclick="nextQuestion()" class="btn-push w-full py-4 bg-gray-800 text-white rounded-2xl font-bold text-lg">次へすすむ</button>
+            </div>
+            <button onclick="abortQuiz()" class="w-full py-2 text-gray-400 font-bold text-sm">さいてんせずにトップへもどる</button>
+        </div>
+
+        <div id="screen-result" class="hidden">
+            <div class="bg-white rounded-3xl p-8 shadow-xl text-center border-b-8 border-gray-200">
+                <h2 class="text-2xl font-bold text-gray-600 mb-2">クイズ おわり！</h2>
+                <div class="text-7xl font-black text-orange-600 my-4">
+                    <span id="final-score">0</span><span class="text-2xl ml-1 text-gray-400">点</span>
+                </div>
+                <div class="bg-orange-50 rounded-2xl p-4 mb-6 border-2 border-orange-200 italic">
+                    <p id="final-comment" class="text-lg font-black text-orange-700"></p>
+                </div>
+                <button onclick="goTop()" class="btn-push w-full py-5 bg-blue-900 border-b-8 border-blue-950 text-white rounded-2xl font-bold text-xl uppercase">もどる</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(isCorrect) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+            if (isCorrect) {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            } else {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            }
+            osc.start(); osc.stop(now + 0.3);
+        }
+
+        // クイズデータ: ansImg プロパティで解説用画像を指定可能
+        const quizData = {
+            batting: [
+                { q: "2ストライクから バントをしたけれど、ファールボールに なりました。どうなる？", c: ["ファールだから2ストライクのまま", "三しん（アウト）"], 
+                a: 1, e: "2ストライクのときに バントが ファールになると スリーバント(三しん)に なるよ。",  img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/b23a83ecd583dbe657e7b9a99044c4e5ce9e47cb/AI01.png",ansImg: "" },
+                { q: "打ったボールが自分の足にあたってからフェアゾーンにころがりました。これはフェア？", c: ["フェア", "ファール"],
+                a: 1, e: "打ったボールがバッターボックスの中で自分の体にあたったらファールだよ。いたい…", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_067.jpg",ansImg: "" },
+                { q: "バッターボックスの ラインを ふみながら 打っても いい？", c: ["いい", "だめ"], 
+                a: 0, e: "ラインをふみながら 打っても いいんだよ！ かんぜんに外に 出て打ったら「はんそく」でアウトになるよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/fa6c2c337a1d452f5c319684b600dad608e1b2de/batterbox.jpg", ansImg: "" },
+                { q: "上から見たとき、ボールがはんぶんだけベースの上をとおっているよ。このコースはストライク？", c: ["ストライク", "ボール"], 
+                a: 0, e: "少しでもベースの上をとおればストライクなんだ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/382d5d799d1a7b903b6e524214163be648abc671/strike%20zone.jpg", ansImg: "" },
+                { q: "ボールがむねの高さにきました。ストライク？", c: ["ボール", "ストライク"], 
+                a: 1, e: "ストライク！上はむねぐらい、下はひざくらいまでがストライクゾーン。きわどいところは まよわず打て！", img: "", ansImg: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/9b9b3edb1cf4805fd34dce1a82d3b0f3feaf67b2/strike.png" },
+                { q: "ストライクゾーンを小さくするためにしゃがんでかまえました。ストライクゾーンは小さくなる？", c: ["なる", "ならない"], 
+                a: 1, e: "なりません！しぜんにかまえているときのストライクゾーンのままなので、ちゃんとかまえよう。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/1cc1df6da4930b86627731173fb528fc0d78bda5/AI02.jpeg", ansImg: "" },
+                { q: "「0アウト」で 1るいに ランナーが います。三しん したけれど キャッチャーが ボールを おとしました。1るいへ 走って いい？", c: ["走って いい", "走っては だめ"], 
+                a: 1, e: "1るいに ランナーが いるときは、キャッチャーが ボールを おとしても「ふりにげ」は できないよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/741fe471ada2195d4f615f12e065712d4a97099f/hurinige.jpg", ansImg: "" },
+                { q: "「2アウト」で 1るいに ランナーが います。三しん したけれど キャッチャーが ボールを おとしました。1るいへ 走って いい？", c: ["走って いい", "走っては だめ"], 
+                a: 0, e: "2アウトの ときは、1るいに ランナーが いても「ふりにげ」ができるんだ！", img: "", ansImg: "" },
+                { q: "フォアボールのとき、キャッチャーが ボールを うしろに そらしました。バッターは 1るいから さきに 行っても いい？", c: ["行っても いい", "1るいでまつ"], 
+                a: 0, e: "フォアボールは ボールデッド（タイム）じゃないから、2るいへ 行っても いいんだよ！", img: "", ansImg: "" },
+                { q: "ないやフライを打ったとき、しんぱんが 「インフィールドフライ！」と 言いました。バッターは どうなる？", c: ["キャッチされても されなくてもアウト", "1るいまで行っていい"], 
+                a: 0, e: "しんぱんが 言った しゅんかんに バッターは アウト。だから はしらなくて いいよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_070.jpg", ansImg: "" },
+                { q: "キャッチャーがボールをはじいたとき 3るいランナーがホームに走ってきました！バッターは じゃまになりそうだけど ボックスから出ても いい？", c: ["出たらアウト", "ボックスの外に 出てもよい"], 
+                a: 1, e: "ランナーが 走ってきたら、じゃまに ならないように すぐ ボックスの外に 出よう。", img: "", ansImg: "" },
+                { q: "キャッチャーフライをとりに行くときに、ネクストバッターとぶつかって ボールがとれなかった。このばあいどうなる？", c: ["ただのファール", "バッターアウト"], 
+                a: 1, e: "これは「しゅびぼうがい」。キャッチャーをじゃましたことになって、バッターはアウトになるよ。ちかくにきたら ちゃんとよけよう！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/ea2a17b0c75ff966d78a5652fc9cdf30ab0a9379/nextbatter.jpg", ansImg: "" },
+                { q: "打ったボールが ベースにあたって ファールゾーンへころがった！これはフェア？", c: ["フェア", "ファール"], 
+                a: 0, e: "フェアです。わからなかったら しんぱんがファールと言うまで 打ったら全力で走ろう！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/74c079426c429a0ea7a7a524981b0577474f4ba9/20230717103809.jpg", ansImg: "" },
+                { q: "打った ボールが ホームベースの 上で とまりました。フェア？ ファール？", c: ["フェア", "ファール"], 
+                a: 0, e: "ベースの 上で 止ったら「フェア」だよ！", img: "", ansImg: "" },
+                { q: "2ストライクから みのがし三しん！そのとき キャッチャーがボールをおとしたら ふりにげできる？", c: ["ふっていないからできない", "ふりにげになる"], 
+                a: 1, e: "バットをふってなくても ふりにげになるよ。あきらめちゃだめだ！", img: "", ansImg: "" },
+                { q: "2ストライクで 空ぶりをして、ボールが 自分の体に あたりました。どうなる？", c: ["三しん（アウト）", "ふりにげできる"], 
+                a: 0, e: "三しんだよ！体にあたったしゅんかんに「ボールデッド(プレーストップ)」になるからふりにげもできないんだ", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/d0f4e8bbd3af83a76d4ad40303c6fd4125eb58f1/baseball_deadball.png", ansImg: "" },
+                { q: "打って走りだしたあとに 自分が打ったボールに当たりました。どうなる？", c: ["すべてアウト", "ファールゾーンだったらセーフ"], 
+                a: 1, e: "フェアゾーンで当たったときだけ「しゅびぼうがい」でアウトに なるよ。", img: "", ansImg: "" },
+                { q: "バントをしたときに 2回バットにあたってから フェアゾーンに ボールが 転がりました。これはフェア？ファール？", c: ["フェア", "ファール"], 
+                a: 1, e: "2回バットに当たったときは ファールに なるよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_068.jpg", ansImg: "" },
+                { q: "スクイズをするとき、ボールがとどかなかったので バットを なげて、ボールに あててフェアになった。これはいい？", c: ["スーパープレイなのでオッケー", "バッターアウト！"], 
+                a: 1, e: "バットを なげて ボールに あててしまうと、じゃまをしたことに なるから アウトだよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/c0e8476b431744e1005284d48784474d86b9a131/squeeze.jpg", ansImg: "" },
+                { q: "1るいへ 走るとき、ラインの 外がわ を はしらなきゃ いけない？", c: ["外がわ を 走る", "内がわ を 走る"], 
+                a: 0, e: "しゅびの じゃまに ならないように、外がわ を 走るのが ルールだよ。", img: "", ansImg: "" }
+            ],
+            running: [
+                { q: "1アウト 3るい。 フライを とられた あと、ランナーが 3るいからホームに スタートしました。これをなんていう？", c: ["タッチアップ", "キャッチアンドゴー"], 
+                a: 0, e: "「タッチアップ」だよ！フライを とられた あとに スタートして、ホームをふめば点が入るよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_083.jpg", ansImg: "" },
+                { q: "この「スリーフィートライン」はなんのために かいてある？", c: ["しゅびの人はこの中に はいれない", "ランナーはこのラインの中を走る"], 
+                a: 1, e: "ランナーはこのラインより 大きく はなれて しゅびをじゃましないためにひいてるせんだよ！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_080.jpg", ansImg: "" },
+                { q: "フォアボールで 1るいに 行きました。1回ベースをふんで はなれたときに タッチされたら アウトに なる？", c: ["アウトに なる", "アウトに ならない"], 
+                a: 0, e: "フォアボールでも しあいは 止まっていないから、ベースを はなれたときに タッチされたらアウトに なるからちゅういしよう！", img: "", ansImg: "" },
+                { q: "ランナー2るい。とうるいしたけど、バッターはフォアボールになりました。このときランナーは2るいにもどらないといけない？", c: ["もどらない", "もどる"], 
+                a: 0, e: "フォアボールは「ボールインプレー」なので、とうるいできるよ！もちろん タッチアウトもされます。", img: "", ansImg: "" },
+                { q: "1るいを かけぬけたあと、2るいに走るたいせいで 止まっています。タッチされたらアウト？", c: ["アウトに なる", "アウトに ならない"], 
+                a: 0, e: "2るいへ いこうと したと しんぱんが 思ったら、タッチアウトに なるよ！", img: "", ansImg: "" },
+                { q: "バッターが 打った ボールが、走っている ランナーに あたった！", c: ["そのまま つづける", "ランナーは アウト"], 
+                a: 1, e: "ボールが ランナーに あたると アウトに なってしまうよ。よけて はしろう！", img: "", ansImg: "" },
+                { q: "ないやは ぜんしんしゅび。ゴロがぬけたあと うしろを走っているランナーに あたりました。これもアウト？", c: ["アウト", "セーフ"], 
+                a: 1, e: "しゅびの人を ぬけたあとに あたったなら、じゃましていないからアウトには ならないよ！", img: "", ansImg: "" },
+                { q: "やしゅが はじいた ボールが、ランナーに あたりました。ランナーはどうなる？", c: ["アウト", "セーフ"], 
+                a: 1, e: "やしゅが さわったあとの ボールなら、あたっても アウトにならないよ。", img: "", ansImg: "" },
+                { q: "前を走っている ランナーを おいこして しまいました。どうなる？", c: ["おいこした 人が アウト", "前を走っている 人が アウト"], 
+                a: 0, e: "前の ランナーを おいこすのは ルールいはん。 おいこした 人が アウトだよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_082.jpg", ansImg: "" },
+                { q: "タッチアップは、がいやフライを やしゅ が 「さわった しゅんかん」に スタートして いい？", c: ["いい", "かんぜんにとってから"], 
+                a: 0, e: "ボールを つかんだ 後だけじゃなく、やしゅが ボールに 「さわった しゅんかん」から 走って(タッチアップして) いいんだ！", img: "", ansImg: "" },
+                { q: "ランナー1,2るいでバッターがないやフライを打ったら「インフィールドフライ！」と しんぱんが 言いました。ランナーは どうしたら いい？", c: ["いそいで つぎの るいに走る", "ベースにもどれるばしょでまつ"], 
+                a: 1, e: "フライを とられたら もどらないと いけないから ちゅういだよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_070.jpg", ansImg: "" },
+                { q: "「インフィールドフライ」のとき ランナーはタッチアップできる？", c: ["できる", "できない"], 
+                a: 0, e: "インフィールドフライはプレーがつづいている「ボールインプレ―」なので タッチアップできるよ！", img: "", ansImg: "" },
+                { q: "とうるいは、ピッチャーが足を上げたあと しか走ってはいけない？", c: ["かならず足を上げたあとに走る", "インプレー中ならいつでも走れる"], 
+                a: 1, e: "「ボールインプレ―」のときなら、いつでも つぎのるいを ねらっていいんだ！", img: "", ansImg: "" },
+                { q: "1アウトランナー3るいで バッターが がいやへ「ファールフライ」を打った。がいやはナイスキャッチ！タッチアップできる？", c: ["ファールでタッチアップはできない", "できる"], 
+                a: 1, e: "ファールでもタッチアップできるよ。がいやはとれるファールでも とらないほうがいいときがあるかも…", img: "", ansImg: "" },
+                { q: "2ベースヒットを打って、2るいについたけど、1るいベースを ふみわすれた！これはアウトに なる？", c: ["すぐ しんぱんからアウトといわれる", "あいてに気づかれて 1るいベースを ふまれたらアウト"], 
+                a: 1, e: "あいてに気づかれて 1るいベースを ふまれたら アウトになるよ。(だれも気づかなかったら セーフかも…)", img: "", ansImg: "" },
+                { q: "スライディングしたときに ベースがふっとんだ！ベースのところまでいってふまないと タッチアウトになる？", c: ["アウトになる", "ベースがあったばしょにいればいい"], 
+                a: 1, e: "ベースがあったばしょに立てばオッケーというルールだよ。ずれたベースをふんでいてもセーフだから、あせらなくていいよ！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/78ce45b376ede40de91eaeed7c3f8544a9e5dc24/sliding.jpeg", ansImg: "" },
+                { q: "2アウトランナー3るい。キャッチャーがボールをはじいて バッターはふりにげ。バッターが1るいでアウトになる前に3るいランナーはホームイン！点は はいる？", c: ["はいらない", "はいる"], 
+                a: 0, e: "1るいがフォースプレイだから 点にはならないよ。(ないやゴロと同じだね)", img: "", ansImg: "" },
+                { q: "ランナー2，3るい。3るいランナーがはさまれた！なんとかもどったけど、気づいたら2人のランナーが3るいベースに立っています。2人ともタッチされたらどうなる？", c: ["後ろの(2るい)ランナーがアウト", "前の(3るい)ランナーがアウト"], 
+                a: 0, e: "ベースは、前を走っている(3るい)ランナーのものなんだ。2るいから走ってきたランナーがアウトになるよ", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/f64dc8d9d9837ca37f64e8e896040b658f27d88f/base_2.jpg", ansImg: "" },
+                { q: "ランナーが 3るいに います。ピッチャーが ボークを しました。どうなる？", c: ["3るいの まま", "ホームへ 行ける"], 
+                a: 1, e: "ボークに なったら、すべての ランナーが 次のベースへ すすめるよ。", img: "", ansImg: "" },
+                { q: "ランナーで はさまれたとき、どこまでにげていい？", c: ["ラインの左右1ｍくらいまで", "どこまでにげてもよい"], 
+                a: 0, e: "ラインからはなれすぎるとアウトになるよ！めやすは3フィート(90cmくらい)と言われているよ！。", img: "", ansImg: "" }
+            ],
+            fielding: [
+                { q: "「ボールデッド」とは どういう いみ？", c: ["プレー中のこと", "プレーがとまっているときのこと"], 
+                a: 1, e: "たとえば、ファールを打ったときや ピッチャーがボークをしたときが 「ボールデッド」。ランナーは とうるいできないよ！", img: "", ansImg: "" },
+                { q: "「ボールインプレー」なのはどっち？", c: ["フォアボール", "デッドボール"], 
+                a: 1, e: "ボールインプレーは しあいがとまっていないということだよ！だからランナーがぼーっとしていたら タッチアウトできる！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/39a4540159f60fbd75baece02de2c17ec7739ccf/fourball.jpg", ansImg: "" },
+                { q: "ないやフライがファールゾーンに上がった。フライをはじいてしまい そのままフェアゾーンにころがってしまった！これはフェア？", c: ["フェア", "ファール"], 
+                a: 1, e: "ファールです。さわったばしょが どこかで きまるよ！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/2b7fe876d1345fa7bb7f2f735348b91c4bde74b2/baseball_fly_error.png", ansImg: "" },
+                { q: "バッターが打ったボールが フェアゾーンにいるやしゅの 体に当たって ファールゾーンへ 出ました。どうなる？", c: ["フェア", "ファール"], 
+                a: 0, e: "フェアです。おなじく、さいしょにさわったばしょが どこかで きまるよ！。", img: "", ansImg: "" },
+                { q: "6→4→3のダブルプレー！さいしょにボールをとったのはだれ？", c: ["セカンド", "ショート"], 
+                a: 1, e: "しゅびのポジションには、それぞればんごうがついてるよ。ショート(6)→セカンド(4)→ファースト(3)のじゅんばんにボールがわたったんだね！", img: "", ansImg: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/d08a2cabb4065ac3a234ec3fd3ab7b6bb53ded47/position.jpg" },
+                { q: "1アウト ランナー1,2るい。「インフィールドフライ」としんぱんが言った！わざと ボールを おとして ダブルプレーを ねらうことはできる？", c: ["できる", "できない"], 
+                a: 1, e: "わざと おとしても、打ったバッターは しんぱんが「インフィールドフライ」と言ったしゅんかんに アウトになる ルールなんだ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_071.jpg", ansImg: "" },
+                { q: "セットポジションに入ったピッチャーが かんぜんにとまらないでホームになげました。これはボーク？", c: ["ボーク", "ボークじゃない"], 
+                a: 0, e: "「ボーク」だよ。セットポジションは、1ど とまらないといけないよ！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/053601a62fd1e6a301beed9f90bf0a675e5cf279/setposision.jpg", ansImg: "" },
+                { q: "ランナー3るい。右ピッチャーが プレートに 足を おいたまま、3るいへ なげる 「まね」を したらボーク？", c: ["ボーク", "ボークじゃない"], 
+                a: 1, e: "「ボーク」だよ。プレートに足をおいたまま 「けんせい」するときは ちゃんとボールをなげないとボークになるんだ！", img: "", ansImg: "" },
+                { q: "ランナー2るい。ピッチャーが プレートから あしを はずして、2るいランナーのところに 走って行って タッチをした！これはボーク？", c: ["ボーク", "ボークじゃない"], 
+                a: 1, e: "プレートから足を はずせば、ピッチャーも ふつうの やしゅとおなじ。うごいて いいよ。", img: "", ansImg: "" },
+                { q: "ランナーにグローブで タッチしたけれど、ボールは はんたいの手にもっていました。これでアウトにできる？", c: ["アウト", "セーフ"], 
+                a: 1, e: "ボールを もっている 手(グローブ)で タッチしないと アウトには ならないよ。", img: "", ansImg: "" },
+                { q: "1アウト ランナー1るい。バッターはファーストゴロを打ちました。ファーストは1るいベースをふんでから 2るいへそうきゅう！2るいでアウトをとるには？", c: ["フォースプレー", "タッチプレー"], 
+                a: 1, e: "さきにバッターランナーがアウトになると ランナーは1るいにもどれるようになるよ！タッチがひつようだ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/d94b8280ca8f1ee059f1ff1da7eb9ff5ac1c60a9/touchplay.png", ansImg: "" },
+                { q: "やしゅのなげたボールが、しんぱんに あたりました。どうなる？", c: ["しあいが止まる(ボールデッド)", "そのまま つづける"], 
+                a: 1, e: "しんぱんに あたっても しあいは 止まらないよ！", img: "", ansImg: "" },
+                { q: "バッターが打つときに、ふったバットがキャッチャーミッドに あたってしまいました。どうなる？", c: ["バッターは1るいへ", "バッターアウト"], 
+                a: 0, e: "キャッチャーが じゃまをした「だげき ぼうがい」とおもわれてしまうから ちゅういだよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/9b9b3edb1cf4805fd34dce1a82d3b0f3feaf67b2/baseball_076.jpg", ansImg: "" },
+                { q: "がいやフライを とったあと、いきおいで グラウンドの外に出てしまいました。どうなる？", c: ["アウト", "セーフ"], 
+                a: 0, e: "ボールを おとさなければ アウトだよ！", img: "", ansImg: "" },
+                { q: "グローブをなげて ボールに あてて 止めました。どうなる？", c: ["ファインプレーなのでオッケー！", "はんそく"], 
+                a: 1, e: "グローブを なげたりして ボールを 止めるのは はんそくだよ。ルールではランナーは3つ すすめちゃうよ。", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/cb17febcda174b15ff13911ec752209b63c21193/baseball_085.jpg", ansImg: "" },
+                { q: "3るいからランナーが走ってきたので、ボールを もっていない キャッチャーが、ホームベースをふまれないように ブロックしました。どうなる？", c: ["テクニックだからOK", "走るいぼうがい(セーフ)"], 
+                a: 1, e: "ボールをもっていないのに ベースをふまれないようにするのは「走るのを じゃました」ことに なるから セーフだよ。", img: "", ansImg: "" },
+                { q: "だきゅうが、がいやのファールゾーンにおちました。バウンドがかわって フェアゾーンにボールがころがった！これはフェア？", c: ["フェア", "ファール"], 
+                a: 1, e: "「ベースよりうしろ」で ファールからフェアゾーンにころがっても フェアにはならないよ", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/a7c2895cd30f6185f6b03c5644128e4e56e99df9/foulzone.gif", ansImg: "" },
+                { q: "ランナー3るい。ランナーはタッチアップしたけど、がいやがキャッチする前にスタートしているところを見た！やしゅは このときどうしたらいい？", c: ["しんぱんがアウトと言うのをまつ", "ボールをもって3るいベースをふんで しんぱんにアピールする"], 
+                a: 1, e: "自分からしんぱんにアピールします。しんぱんはおしえてくれないよ。せいこうしたらアウトだ！", img: "https://github.com/yuyusuke0701/Baseball-QUIZ/raw/47bbd5f7303dba72419bfbd22a2acd03239a19a9/touchup.jpg", ansImg: "" },
+                { q: "バッターがバントしたボールが、ファールゾーンから フェアゾーンにむかって コロコロころがっている。フェアになる前にボールをキャッチ！これはフェア？ファール？", c: ["フェア", "ファール"], 
+                a: 1, e: "ファール！アウトにするのがむずかしそうだったら、ファールにしたほうが いいよね！", img: "", ansImg: "" },
+                { q: "ランナー1，3るいで、ないやゴロがきました。フォースプレーでアウトをとれるのは？", c: ["1,2るい", "ホームと1るい"], 
+                a: 0, e: "3るいランナーはうしろからランナーがきていないから もどることが できるよ！", img: "", ansImg: "" }
+            ]
+        };
+
+        let allUsers = JSON.parse(localStorage.getItem('bq_multi_users') || '{}');
+        let currentUser = localStorage.getItem('bq_current_name') || '';
+
+        window.onload = function() {
+            refreshUserDropdown();
+            if (currentUser && allUsers[currentUser]) { document.getElementById('user-select').value = currentUser; }
+            updateHighScoreAndRank();
+        };
+
+        function refreshUserDropdown() {
+            const select = document.getElementById('user-select');
+            select.innerHTML = '<option value="">-- ユーザーを えらぶ --</option>';
+            Object.keys(allUsers).sort().forEach(name => {
+                const opt = document.createElement('option'); opt.value = name; opt.innerText = name;
+                select.appendChild(opt);
+            });
+            select.innerHTML += '<option value="ACTION_ADD">＋ あたらしい 名前を登録</option>';
+            select.innerHTML += '<option value="ACTION_DELETE">❌ いまのユーザーを 消す</option>';
+        }
+
+        function handleUserSelection(val) {
+            if (val === "ACTION_ADD") {
+                const name = prompt("名前を入力");
+                if (name && name.trim()) {
+                    const tName = name.trim();
+                    if (!allUsers[tName]) allUsers[tName] = { batting: 0, running: 0, fielding: 0 };
+                    currentUser = tName; saveAndRefresh();
+                } else { document.getElementById('user-select').value = currentUser; }
+            } else if (val === "ACTION_DELETE") {
+                if (!currentUser) return;
+                if (confirm(`${currentUser} さんの きろくを 消しますか？`)) {
+                    delete allUsers[currentUser]; currentUser = ""; saveAndRefresh();
+                } else { document.getElementById('user-select').value = currentUser; }
+            } else {
+                currentUser = val; localStorage.setItem('bq_current_name', currentUser); updateHighScoreAndRank();
+            }
+        }
+
+        function saveAndRefresh() {
+            localStorage.setItem('bq_multi_users', JSON.stringify(allUsers));
+            localStorage.setItem('bq_current_name', currentUser);
+            refreshUserDropdown(); document.getElementById('user-select').value = currentUser; updateHighScoreAndRank();
+        }
+
+        function updateHighScoreAndRank() {
+            let b = 0, r = 0, f = 0;
+            if (currentUser && allUsers[currentUser]) {
+                const u = allUsers[currentUser]; b = u.batting || 0; r = u.running || 0; f = u.fielding || 0;
+            }
+            document.getElementById('best-batting').innerText = b;
+            document.getElementById('best-running').innerText = r;
+            document.getElementById('best-fielding').innerText = f;
+            const total = b + r + f;
+            const rName = document.getElementById('rank-name'); const rDisp = document.getElementById('rank-display');
+            rDisp.className = "bg-white rounded-2xl px-6 py-2 shadow-lg border-4 rank-card inline-block ";
+            if (!currentUser) { rName.innerText = "---"; rDisp.classList.add("rank-rookie"); return; }
+            
+            if (total === 300) { rName.innerText = "👑 ルールマスター"; rDisp.classList.add("rank-master"); }
+            else if (total >= 270) { rName.innerText = "🥇 Aクラス"; rDisp.classList.add("rank-a"); }
+            else if (total >= 200) { rName.innerText = "🥈 Bクラス"; rDisp.classList.add("rank-b"); }
+            else if (total >= 100) { rName.innerText = "🥉 Cクラス"; rDisp.classList.add("rank-c"); }
+            else { rName.innerText = "🌱 ルーキー"; rDisp.classList.add("rank-rookie"); }
+        }
+
+        function resetScores() {
+            if (!currentUser) return;
+            if (confirm(`${currentUser} さんの スコアを 0 に もどしますか？`)) {
+                allUsers[currentUser] = { batting: 0, running: 0, fielding: 0 };
+                localStorage.setItem('bq_multi_users', JSON.stringify(allUsers)); updateHighScoreAndRank();
+            }
+        }
+
+        let currentCategory = ""; let currentSet = []; let qIndex = 0; let correctCount = 0;
+
+        function showScreen(id) {
+            ['screen-top', 'screen-quiz', 'screen-feedback', 'screen-result'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function initQuiz(cat) {
+            if (!currentUser) { alert("なまえを えらんでね！"); return; }
+            document.getElementById('user-select').disabled = true;
+            document.getElementById('rank-display').classList.add('hidden');
+            currentCategory = cat; currentSet = quizData[cat]; qIndex = 0; correctCount = 0;
+            showScreen('screen-quiz'); renderQuestion();
+        }
+
+        function abortQuiz() {
+            if (confirm("さいてんせずに トップ画面に もどりますか？")) { goTop(); }
+        }
+
+        function renderQuestion() {
+            const data = currentSet[qIndex];
+            document.getElementById('display-q-num').innerText = `${qIndex + 1} / ${currentSet.length}`;
+            document.getElementById('display-score-running').innerText = Math.round((correctCount / currentSet.length) * 100) + " 点";
+            document.getElementById('question-text').innerText = data.q;
+            
+            const imgContainer = document.getElementById('question-image-container');
+            if (data.img) {
+                imgContainer.innerHTML = `<img src="${data.img}" class="q-image shadow-md" alt="question">`;
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.innerHTML = ''; imgContainer.classList.add('hidden');
+            }
+            
+            const container = document.getElementById('choices-container'); container.innerHTML = '';
+            data.c.forEach((choice, i) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-push w-full py-4 px-5 bg-white border-2 border-blue-200 border-b-8 rounded-2xl text-lg font-bold text-blue-800 text-left flex items-center shadow-sm";
+                btn.innerHTML = `<span class="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center mr-3 text-xs font-black">${i + 1}</span> ${choice}`;
+                btn.onclick = () => checkAnswer(i); container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(idx) {
+            const data = currentSet[qIndex]; const isCorrect = (idx === data.a); playSound(isCorrect);
+            const card = document.getElementById('feedback-card'); const icon = document.getElementById('result-icon'); const txt = document.getElementById('result-text');
+            
+            // --- 解説画像の表示処理 ---
+            const fbImgContainer = document.getElementById('feedback-image-container');
+            // 解説用画像(ansImg)がある場合はそれを、ない場合は問題用画像(img)を出す（問題画像もなければ非表示）
+            const displayImg = data.ansImg || data.img; 
+            
+            if (displayImg) {
+                fbImgContainer.innerHTML = `<img src="${displayImg}" class="q-image shadow-md" alt="feedback">`;
+                fbImgContainer.classList.remove('hidden');
+            } else {
+                fbImgContainer.innerHTML = '';
+                fbImgContainer.classList.add('hidden');
+            }
+            // ------------------------
+
+            if (isCorrect) {
+                correctCount++; card.className = "bg-green-100 border-green-300 rounded-3xl p-8 shadow-2xl text-center border-b-8";
+                icon.innerHTML = "⭕️"; txt.innerText = "せいかい！"; txt.className = "text-3xl font-black mb-4 text-green-700";
+            } else {
+                card.className = "bg-red-100 border-red-300 rounded-3xl p-8 shadow-2xl text-center border-b-8";
+                icon.innerHTML = "❌"; txt.innerText = "ざんねん！"; txt.className = "text-3xl font-black mb-4 text-red-700";
+            }
+            document.getElementById('explanation-text').innerText = data.e; showScreen('screen-feedback');
+        }
+
+        function nextQuestion() {
+            qIndex++;
+            if (qIndex < currentSet.length) { renderQuestion(); showScreen('screen-quiz'); }
+            else {
+                const finalScore = Math.round((correctCount / currentSet.length) * 100);
+                document.getElementById('final-score').innerText = finalScore;
+                const commentEl = document.getElementById('final-comment');
+                if (finalScore === 100) commentEl.innerText = "完璧！天才ルールマスター！";
+                else if (finalScore >= 80) commentEl.innerText = "すごい！次は満点をめざそう！";
+                else if (finalScore >= 50) commentEl.innerText = "おしかった！あと少しで合格だ！";
+                else commentEl.innerText = "どんまい！何度もやって覚えよう！";
+                if (currentUser && allUsers[currentUser]) {
+                    const lastBest = allUsers[currentUser][currentCategory] || 0;
+                    if (finalScore > lastBest) { allUsers[currentUser][currentCategory] = finalScore; saveAndRefresh(); }
+                }
+                showScreen('screen-result');
+            }
+        }
+
+        function goTop() { 
+            document.getElementById('user-select').disabled = false; 
+            document.getElementById('rank-display').classList.remove('hidden');
+            updateHighScoreAndRank(); showScreen('screen-top'); 
+        }
+    </script>
+</body>
+</html>
